@@ -187,12 +187,9 @@ class BroadcastTerminal {
     }
 
     displayBroadcastResults(results) {
-        console.log(chalk.bold.blue('\n=== Attackers Result ==='));
         results.forEach((result, index) => {
             if (result.status === 'Success') {
-                console.log(chalk.green(`Server ${index + 1} (${result.server}): Success`));
             } else {
-                console.log(chalk.red(`Server ${index + 1} (${result.server}): Failed - ${result.error}`));
             }
         });
 
@@ -201,7 +198,7 @@ class BroadcastTerminal {
 
         console.log(chalk.yellow(`\nTotal Servers: ${results.length}`));
         console.log(chalk.green(`Successful: ${successCount}`));
-        console.log(chalk.red(`Failed: ${failureCount}`));
+        console.log(chalk.red(`Failed: ${failureCount}\n\x1b[35mQuoteas : Kemerahan atau failed bukan berarti gagal kalau tidak percaya cek targetmu di checkhost dengan benar -_-\nMrTanjiro Said.`));
     }
 
     async checkServerStatus() {
@@ -251,7 +248,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Method         : MIX`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
 
-        console.log(chalk.blue(`\nExecuting mix command: ${fullCommand}`));
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
         // Update last broadcast time
         this.lastBroadcastTime = currentDateTime;
@@ -304,7 +301,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Method         : UDP`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
 
-        console.log(chalk.blue(`\nExecuting UDP command: ${fullCommand}`));
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
         // Update last broadcast time
         this.lastBroadcastTime = currentDateTime;
@@ -357,7 +354,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Method         : Tanjiro`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
 
-        console.log(chalk.blue(`\nExecuting Tanjiro command: ${fullCommand}`));
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
         // Update last broadcast time
         this.lastBroadcastTime = currentDateTime;
