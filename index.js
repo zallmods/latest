@@ -161,38 +161,31 @@ class BroadcastTerminal {
     }
 
     async broadcastCommandToServers(command) {
-        const results = [];
-
-        for (const server of SERVERS) {
+        // Use Promise.all to execute commands to all servers simultaneously
+        const results = await Promise.all(SERVERS.map(async (server) => {
             try {
                 const response = await axios.post(server.url + '/execute', { command }, {
                     timeout: 10000 // 10 seconds timeout
                 });
 
-                results.push({
+                return {
                     server: server.url,
                     status: 'Success',
                     response: response.data
-                });
+                };
             } catch (error) {
-                results.push({
+                return {
                     server: server.url,
                     status: 'Failed',
                     error: error.message
-                });
+                };
             }
-        }
+        }));
 
         return results;
     }
 
     displayBroadcastResults(results) {
-        results.forEach((result, index) => {
-            if (result.status === 'Success') {
-            } else {
-            }
-        });
-
         const successCount = results.filter(r => r.status === 'Success').length;
         const failureCount = results.filter(r => r.status === 'Failed').length;
 
