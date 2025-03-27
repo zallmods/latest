@@ -346,7 +346,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full Tanjiro broadcast command
-        const fullCommand = `cd method && node tornado GET ${url} ${time} 1 1 proxy.txt`;
+        const fullCommand = `cd method && node tornado GET ${url} ${time} 1 128 proxy.txt`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
