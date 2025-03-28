@@ -285,7 +285,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full UDP broadcast command
-        const fullCommand = `cd method && node udp.js ${url} 1 ${time} ${port}`;
+        const fullCommand = `cd method && node udp.js ${url} 20 ${time} ${port}`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
