@@ -5,6 +5,7 @@ const net = require("net");
  const url = require("url");
  const crypto = require("crypto");
  const fs = require("fs");
+ const colors = require('colors');
 
 const errorHandler = error => {
     //console.log(error);
