@@ -28,7 +28,11 @@ const executeCommand = (command) => {
         const allowedCommandPrefixes = [
             'cd method && node mix.js',
             'cd method && node udp.js',
-            'cd method && node tornado'
+            'cd method && node tornado',
+            'cd method && node TLS.js',
+            'cd method && node RAPID',
+            'cd method && node Cibi',
+            'cd method && node MixBill.js'
         ];
 
         // Check if the command starts with any allowed prefix
