@@ -53,9 +53,9 @@ class BroadcastTerminal {
         this.activeBroadcasts = []; // Track ongoing broadcasts
         this.lastBroadcastTime = null; // Track last broadcast time for cooldown
         this.lastConcurrentMaxReached = null; // Track when we hit max concurrent attacks
-        this.MAX_DURATION = 600; // Maximum attack duration (seconds)
+        this.MAX_DURATION = 120; // Maximum attack duration (seconds)
         this.COOLDOWN_DURATION = 3; // Cooldown period between attacks (seconds)
-        this.MAX_CONCURRENT_ATTACKS = 3; // Maximum number of concurrent attacks
+        this.MAX_CONCURRENT_ATTACKS = 2; // Maximum number of concurrent attacks
         this.CONCURRENT_COOLDOWN = 60; // Cooldown after reaching max concurrent (seconds)
 
         this.rl = readline.createInterface({
