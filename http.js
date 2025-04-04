@@ -45,7 +45,7 @@ const executeCommand = (command) => {
         }
 
         exec(command, { 
-            timeout: 120000, // 2 minutes timeout
+            timeout: 600000, // 2 minutes timeout
             maxBuffer: 1024 * 1024 // 1MB max buffer
         }, (error, stdout, stderr) => {
             if (error) {
