@@ -623,7 +623,7 @@ class BroadcastTerminal {
 
         const currentDateTime = moment();
         const endTime = moment().add(parseInt(time), 'seconds');
-        const fullCommand = `cd method && node udp.js ${url} 8 ${time} ${port}`;
+        const fullCommand = `./udp ${url} ${port} ${time}`;
         const formattedTime = currentDateTime.format('MMM DD YYYY HH:mm:ss');
         console.log(`
         Attack Details:
